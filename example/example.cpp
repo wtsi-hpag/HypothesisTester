@@ -23,6 +23,7 @@ int main(int argc, char ** argv)
 
 	unsigned int order = 4;
 	unsigned int nData = 100;
+	unsigned int nThreads = 1;
 	srand(time(NULL));
 	
 	//Allow basic command line interaction
@@ -34,10 +35,14 @@ int main(int argc, char ** argv)
 	{
 		nData = std::stoi(argv[2]);
 	}
+	if (argc > 3)
+	{
+		nThreads = std::stoi(argv[3]);
+	}
 	
 	auto data = generateData(order,nData);
 
-	ModelTester<coordinate> T(true);
+	ModelTester<coordinate> T(nThreads);
 
 	//add one hypothesis at a time into the tester object
 	for (int i = 0; i < order + 4; ++i)
@@ -46,7 +51,7 @@ int main(int argc, char ** argv)
 	}
 
 	//This is the only place where data can be introduced, to prevent statistical mishandling.
-	auto results = T.BeginTest(data,100000);
+	auto results = T.BeginTest(data,1000);
 
 
 	std::cout << "Best Fitting Model is: " << results.BestModel << std::endl;

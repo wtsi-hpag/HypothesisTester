@@ -15,8 +15,8 @@ class PolynomialHypothesis : public Hypothesis<coordinate>
 		{
 			Order = order;
 			//2 additional parameters come from the zeroth order parameter, and from the error which we are also inferring
-			std::vector<double> lower(order+2,-2);
-			std::vector<double> upper(order+2, 2);
+			std::vector<double> lower(order+2,-1);
+			std::vector<double> upper(order+2, 1);
 			lower[order+1] = -5; //error has different bounds than the coefficients!
 			upper[order+1]= 1; 
 

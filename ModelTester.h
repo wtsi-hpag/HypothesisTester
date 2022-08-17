@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include "Hypothesis.h"
-
+#include <thread>
 struct InferenceResults
 {
 	std::vector<std::string> Models;
@@ -18,13 +18,13 @@ class ModelTester
 	public:
 		ModelTester()
 		{
-			QuietMode = false;
+			Nthreads = 1;
 		}
 
-		ModelTester(bool quiet)
+		ModelTester(int n)
 		{
-			QuietMode=quiet;
-		};
+			Nthreads = n;
+		}
 
 		template<class T>
 		void AddHypothesis(T guess)
@@ -36,40 +36,70 @@ class ModelTester
 		InferenceResults BeginTest(const std::vector<DataClass> & Data, int resolution)
 		{
 			int N = Suppositions.size();
+			
 			if (N < 2)
 			{
 				std::cout << "Cannot perform test with fewer than 2 hypotheses" << std::endl;
 				exit(5);
 			} 
-			double bestScore = 0;
-			int bestHyp = -1;
-			std::vector<double> scores;
-			std::vector<std::string> names;
-			
-			for (int i = 0; i < Suppositions.size(); ++i)
+
+
+			Scores = std::vector(N,0.0);
+			Threads.resize(Nthreads-1);
+			Names.resize(N);
+
+			std::vector<int> count(Nthreads,0);
+			int allocated = 0;
+			int idx = 0;
+			while (allocated < N)
 			{
-				if (!QuietMode)	{	std::cout << "Testing " << Suppositions[i]->Identifier << std::endl; }
-				double S =Suppositions[i]->Score(Data,resolution);
-				if (!QuietMode)	{	std::cout << "\tScored " << S << std::endl;}
-				if (i == 0 || (!std::isnan(S) && !std::isinf(S) && S > bestScore))
-				{
-					bestScore = S;
-					bestHyp = i;
-					if (!QuietMode)	{	std::cout << "\tAssigining best score" << std::endl;}
-				}
-				scores.push_back(S);
-				names.push_back(Suppositions[i]->Identifier);
-				if (!QuietMode)	{	std::cout << "\tCompleted" << std::endl;}
+				++count[idx % Nthreads];
+				++allocated;
+				++idx;
 			}
-			
+
+			int t = 0;
+			for (int i = 0; i < Nthreads -1; ++i)
+			{
+				Threads[i] = std::thread(&ModelTester::ChunkedScoreLauncher,this,Data,resolution,t,count[i]);
+				t+=count[i];
+			}
+			// Threads[Nthreads-1]= std::thread(&ModelTester::ChunkedScoreLauncher,this,Data,resolution,t,count[Nthreads-1]);
+			ChunkedScoreLauncher(Data,resolution,t,count[Nthreads-1]);
+
+			int joined = 1;
+			while (joined < Nthreads)
+			{
+				for (int n = 0; n < Nthreads-1; ++n)
+				{
+					if (Threads[n].joinable())
+					{
+						Threads[n].join();
+						++joined;
+					}
+				}
+			}
+
+			double bestScore;
+			int bestHyp;
+			for (int i = 0; i <N; ++i)
+			{
+				if (i==0 || Scores[i] > bestScore)
+				{
+					bestScore = Scores[i];
+					bestHyp = i;
+				}
+			}
+
+
 			for (int i = 0; i < Suppositions.size(); ++i)
 			{
-				scores[i] -= bestScore;
+				Scores[i] -= bestScore;
 			}
 			InferenceResults output;
-			output.Models = names;
-			output.Scores = scores;
-			output.BestModel = names[bestHyp];
+			output.Models = Names;
+			output.Scores = Scores;
+			output.BestModel = Names[bestHyp];
 			output.BestModelIdx = bestHyp;
 
 			return output;
@@ -91,6 +121,19 @@ class ModelTester
 
 	private:
 		std::vector<std::unique_ptr<Hypothesis<DataClass>>> Suppositions; 
-		bool QuietMode;
+		std::vector<double> Scores;
+		std::vector<std::thread> Threads;
+		std::vector<std::string> Names;
+		int Nthreads;
 
+		void ChunkedScoreLauncher(const std::vector<DataClass> & Data, int resolution,int start, int size)
+		{
+			int end = std::min(start+size,(int)Suppositions.size());
+			for (int i = start; i < end; ++i)
+			{
+				double S = Suppositions[i]->Score(Data,resolution);
+				Scores[i] = S;
+				Names[i] =Suppositions[i]->Identifier;
+			}
+		}
 };
