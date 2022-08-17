@@ -204,5 +204,7 @@ class squareMatrix
 		
 		std::vector<std::vector<double>> Data;
 
+		
+
 
 };
