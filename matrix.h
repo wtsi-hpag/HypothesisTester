@@ -5,7 +5,9 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+
 //A highly simplified, specialised and streamlined interface for matrices -- I could have used another implementation but I think this lightweight mimicry helps my case
+//Though it can be used for other purposes within the Hypothesis subclasses (i.e. data binning), the squareMatrix class is designed entirely around the computation of the LU form, and hence the log-determinant of the matrix which is needed for the GAI.
 class squareMatrix
 {
 	public:
@@ -20,16 +22,18 @@ class squareMatrix
 			Data = std::vector<std::vector<double>>(dim,std::vector<double>(dim,0.0));
 		};
 	
-		
+		//!Access to matrix is through (i,j) instead of [i][j], as this allows me to protect the internal structure of the arrays		
 		double & operator()(unsigned int i, unsigned int j)
 		{
 			return Data[i][j];
 		}
+		//! If squareMatrix is ever const, need this to mimic the non-const one
 		const double & operator()(unsigned int i, unsigned int j) const
 		{
 			return Data[i][j];
 		}
 
+		//! Shouldn't be used much in real life, but useful to be able to printout the matrix as a diagnostic.
 		std::string Display()
 		{
 			std::ostringstream s;
@@ -74,16 +78,15 @@ class squareMatrix
 			return out;
 		}
 
-
+		//What this is here for: computing the logarithm of the determinant via the LU decomposition method
+		//The bits that are commented out are those necessary if you actually want the LU decomposition - since we just want the determinant they're only useful for diagnostics and checking the decomposition was successful 
 		double log_LU_Determinant()
 		{
-			squareMatrix P = Identity(Dimension);
+			// squareMatrix P = Identity(Dimension);
 			squareMatrix L = Identity(Dimension);
 			squareMatrix A = *this;
-			// double p = 1;
 			for (int i = 0; i < Dimension-1; ++i)
 			{
-				// std::cout << "LU step " << i << std::endl;
 				double base = A(i,i);
 				if (abs(base) < 1e-10)
 				{
@@ -100,11 +103,10 @@ class squareMatrix
 						}
 					}
 					A = newP * A;
-					// L = newP * L;
-					P = newP * P;
+					L = newP * L;
+					// P = newP * P;
 					base = A(i,i);
 				}
-				// squareMatrix ell = Identity(Dimension);
 				for (int q = i + 1; q < Dimension; ++q)
 				{
 					L(q,i) = A(q,i)/base;
@@ -115,10 +117,7 @@ class squareMatrix
 						A(q,z) += ell * A(i,z);
 					}
 				}
-				// A = ell * A;		
-
-
-				// std::cout << i << "\n" << A.Display÷ß) << std::endl;
+		
 				if (A.isUpperTriangular() && L.isLowerTriangular())
 				{
 					break;
@@ -204,7 +203,7 @@ class squareMatrix
 		
 		std::vector<std::vector<double>> Data;
 
-		
+
 
 
 };
