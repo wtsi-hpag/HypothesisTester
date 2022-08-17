@@ -16,7 +16,15 @@ template<class DataClass>
 class ModelTester
 {
 	public:
-		ModelTester(){};
+		ModelTester()
+		{
+			QuietMode = false;
+		}
+
+		ModelTester(bool quiet)
+		{
+			QuietMode=quiet;
+		};
 
 		template<class T>
 		void AddHypothesis(T guess)
@@ -40,20 +48,18 @@ class ModelTester
 			
 			for (int i = 0; i < Suppositions.size(); ++i)
 			{
-
-				std::cout << "Testing " << Suppositions[i]->Identifier << std::endl;
+				if (!QuietMode)	{	std::cout << "Testing " << Suppositions[i]->Identifier << std::endl; }
 				double S =Suppositions[i]->Score(Data,resolution);
-				std::cout << "\tScored " << S << std::endl;
+				if (!QuietMode)	{	std::cout << "\tScored " << S << std::endl;}
 				if (i == 0 || (!std::isnan(S) && !std::isinf(S) && S > bestScore))
 				{
 					bestScore = S;
 					bestHyp = i;
-					std::cout << "\tAssigining best score" << std::endl;
+					if (!QuietMode)	{	std::cout << "\tAssigining best score" << std::endl;}
 				}
-				std::cout << "\tBeginning model fit" << std::endl;
 				scores.push_back(S);
 				names.push_back(Suppositions[i]->Identifier);
-				std::cout << "\tCompleted" << std::endl;
+				if (!QuietMode)	{	std::cout << "\tCompleted" << std::endl;}
 			}
 			
 			for (int i = 0; i < Suppositions.size(); ++i)
@@ -82,5 +88,9 @@ class ModelTester
 				return {};
 			}
 		}
-	std::vector<std::unique_ptr<Hypothesis<DataClass>>> Suppositions; 
+
+	private:
+		std::vector<std::unique_ptr<Hypothesis<DataClass>>> Suppositions; 
+		bool QuietMode;
+
 };
