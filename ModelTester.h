@@ -118,7 +118,7 @@ class ModelTester
 				return {};
 			}
 		}
-
+		bool PrintMessages = false;
 	private:
 		std::vector<std::unique_ptr<Hypothesis<DataClass>>> Suppositions; 
 		std::vector<double> Scores;
@@ -131,6 +131,10 @@ class ModelTester
 			int end = std::min(start+size,(int)Suppositions.size());
 			for (int i = start; i < end; ++i)
 			{
+				if (PrintMessages)
+				{
+					std::cout << "Beginning Test on " << Suppositions[i]->Identifier << std::endl;
+				}
 				double S = Suppositions[i]->Score(Data,resolution);
 				Scores[i] = S;
 				Names[i] =Suppositions[i]->Identifier;
