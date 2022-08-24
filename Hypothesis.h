@@ -348,6 +348,7 @@ class Hypothesis
 			double optimalValue = LogProbability(Data,optimum) + LogPrior(optimum);
 			squareMatrix s = ProbabilityHessian(Data,optimum);
 			double d= s.log_LU_Determinant();
+			
 			double v = optimalValue +(double)Dimension/2 * log(2*M_PI) -0.5 * d;
 			return v;
 			
