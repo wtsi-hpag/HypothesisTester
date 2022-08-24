@@ -87,7 +87,7 @@ class squareMatrix
 			squareMatrix A = *this;
 			for (int i = 0; i < Dimension-1; ++i)
 			{
-				std::cout << i << "/"<< Dimension-1 << std::endl;
+				// std::cout << i << "/"<< Dimension-1 << std::endl;
 				double base = A(i,i);
 				if (abs(base) < 1e-10)
 				{
@@ -119,10 +119,10 @@ class squareMatrix
 					}
 				}
 		
-				if (A.isUpperTriangular() && L.isLowerTriangular())
-				{
-					break;
-				}
+				// if (A.isUpperTriangular() && L.isLowerTriangular())
+				// {
+				// 	break;
+				// }
 				
 			}
 			double p = 0;
