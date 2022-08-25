@@ -129,15 +129,23 @@ class ModelTester
 		void ChunkedScoreLauncher(const std::vector<DataClass> & Data, int resolution,int start, int size)
 		{
 			int end = std::min(start+size,(int)Suppositions.size());
+			if (PrintMessages)
+			{
+				std::cout << "Testing " << Suppositions.size() << " models" << std::endl;
+			}
 			for (int i = start; i < end; ++i)
 			{
 				if (PrintMessages)
 				{
-					std::cout << "Beginning Test on " << Suppositions[i]->Identifier << std::endl;
+					std::cout << "\tBeginning Test on " << Suppositions[i]->Identifier << std::endl;
 				}
 				double S = Suppositions[i]->Score(Data,resolution);
 				Scores[i] = S;
 				Names[i] =Suppositions[i]->Identifier;
+				if (PrintMessages)
+				{
+					std::cout << "\t\tScored: " << S << std::endl;
+				}
 			}
 		}
 };
