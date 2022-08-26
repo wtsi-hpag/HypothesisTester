@@ -361,9 +361,16 @@ class Hypothesis
 			{
 				std::cout << "\t\t" << inferredDimension << "-dimension Hessian computed with determinant " << d << std::endl;
 			}
-			double v = optimalValue +(double)d/2 * log(2*M_PI) -0.5 * d;
+			double v = optimalValue +(double)d/2 * log(2*M_PI) -0.5 * d - GAI_SuperfluousPenalty(Dimension,inferredDimension);
 			
 			return v;
 			
+		}
+
+		double GAI_SuperfluousPenalty(int expectedDimension, int inferredDimension)
+		{
+			int missingDimensions = expectedDimension - inferredDimension;
+			double logv = log(paramUpperBound[0] - paramLowerBound[0]);
+			return missingDimensions * logv;
 		}
 };
