@@ -118,7 +118,7 @@ class ModelTester
 				return {};
 			}
 		}
-		bool PrintMessages = false;
+		int Verbosity = 0;
 	private:
 		std::vector<std::unique_ptr<Hypothesis<DataClass>>> Suppositions; 
 		std::vector<double> Scores;
@@ -129,20 +129,21 @@ class ModelTester
 		void ChunkedScoreLauncher(const std::vector<DataClass> & Data, int resolution,int start, int size)
 		{
 			int end = std::min(start+size,(int)Suppositions.size());
-			if (PrintMessages)
+			if (Verbosity >0)
 			{
 				std::cout << "Testing " << Suppositions.size() << " models" << std::endl;
 			}
 			for (int i = start; i < end; ++i)
 			{
-				if (PrintMessages)
+				if (Verbosity >0)
 				{
 					std::cout << "\tBeginning Test on " << Suppositions[i]->Identifier << std::endl;
 				}
+				Suppositions[i]->Verbosity = Verbosity;
 				double S = Suppositions[i]->Score(Data,resolution);
 				Scores[i] = S;
 				Names[i] =Suppositions[i]->Identifier;
-				if (PrintMessages)
+				if (Verbosity>0)
 				{
 					std::cout << "\t\tScored: " << S << std::endl;
 				}
