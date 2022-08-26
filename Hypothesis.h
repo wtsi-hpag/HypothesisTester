@@ -349,7 +349,9 @@ class Hypothesis
 			squareMatrix s = ProbabilityHessian(Data,optimum);
 			double d= s.log_LU_Determinant();
 			int inferredDimension = s.Dimension; //allows individual hypotheses to lower the dimension of the Hessian, i.e. if a bunch of variables are superfluous and don't enter into the Gaussian form
+
 			double v = optimalValue +(double)inferredDimension/2 * log(2*M_PI) -0.5 * d;
+			std::cout << optimalValue << "  " << inferredDimension << "   " << d << " ----->  " << v << std::endl;
 			return v;
 			
 		}
