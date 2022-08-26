@@ -208,7 +208,7 @@ class Hypothesis
 			}
 		}
 
-
+		int Verbosity = 0;
 		double Tolerance = 0.00000;
 		int Dimension;
 	private:
@@ -322,6 +322,10 @@ class Hypothesis
 			double s = 0;
 			std::vector<double> params(Dimension);
 			double V = IntegrationVolume();
+			if (Verbosity >=1)
+			{
+				std::cout << "\t\tNow beginning " << resolution << " samples of the function" << std::endl;
+			}
 			for (int i = 0; i < resolution; ++i)
 			{
 				double rSq = 0;
@@ -346,12 +350,19 @@ class Hypothesis
 			auto start = paramMidPoint();
 			auto optimum = FindMaximum(Data,start,resolution);
 			double optimalValue = LogProbability(Data,optimum);
+			if (Verbosity >=1)
+			{
+				std::cout << "\t\tOptimum value = " << optimum "\n\t\tNow computing det(H)" << std::endl;
+			}
 			squareMatrix s = ProbabilityHessian(Data,optimum);
 			double d= s.log_LU_Determinant();
 			int inferredDimension = s.Dimension; //allows individual hypotheses to lower the dimension of the Hessian, i.e. if a bunch of variables are superfluous and don't enter into the Gaussian form
-
+			if (Verbosity >=1)
+			{
+				std::cout << "\t\t" << inferredDimension "-dimension Hessian computed with determinant " << d << std::endl;
+			}
 			double v = optimalValue +(double)inferredDimension/2 * log(2*M_PI) -0.5 * d;
-			// std::cout << optimalValue << "  " << inferredDimension << "   " << d << " ----->  " << v << std::endl;
+			
 			return v;
 			
 		}
