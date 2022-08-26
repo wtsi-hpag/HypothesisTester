@@ -373,7 +373,7 @@ class Hypothesis
 			double logv = log(paramUpperBound[0] - paramLowerBound[0]);
 			if (Verbosity >1)
 			{
-				std::cout << "\t\tThe " << missingDimensions << " superflous dimensions incurred a penalty of " << missingDimensions*logv  << d << std::endl;
+				std::cout << "\t\tThe " << missingDimensions << " superflous dimensions incurred a penalty of " << missingDimensions*logv << std::endl;
 			}
 			return missingDimensions * logv;
 		}
