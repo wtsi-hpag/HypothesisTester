@@ -361,7 +361,7 @@ class Hypothesis
 			{
 				std::cout << "\t\t" << inferredDimension << "-dimension Hessian computed with determinant " << d << std::endl;
 			}
-			double v = optimalValue +(double)inferredDimension/2 * log(2*M_PI) -0.5 * d;
+			double v = optimalValue +(double)d/2 * log(2*M_PI) -0.5 * d;
 			
 			return v;
 			
