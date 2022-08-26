@@ -352,14 +352,14 @@ class Hypothesis
 			double optimalValue = LogProbability(Data,optimum);
 			if (Verbosity >=1)
 			{
-				std::cout << "\t\tOptimum value = " << optimum "\n\t\tNow computing det(H)" << std::endl;
+				std::cout << "\t\tOptimum value = " << optimalValue << "\n\t\tNow computing det(H)" << std::endl;
 			}
 			squareMatrix s = ProbabilityHessian(Data,optimum);
 			double d= s.log_LU_Determinant();
 			int inferredDimension = s.Dimension; //allows individual hypotheses to lower the dimension of the Hessian, i.e. if a bunch of variables are superfluous and don't enter into the Gaussian form
 			if (Verbosity >=1)
 			{
-				std::cout << "\t\t" << inferredDimension "-dimension Hessian computed with determinant " << d << std::endl;
+				std::cout << "\t\t" << inferredDimension << "-dimension Hessian computed with determinant " << d << std::endl;
 			}
 			double v = optimalValue +(double)inferredDimension/2 * log(2*M_PI) -0.5 * d;
 			
