@@ -30,22 +30,25 @@ double ale(double a, double b)
 }
 
 
-double fillFromDeltas(std::vector<double> &x, std::vector<int> & binIds, const std::vector<std::vector<double>> & accumulated_deltas)
+double fillFromDeltas(std::vector<double> &x, std::vector<int> & binIds, const std::vector<std::vector<double>> & accumulated_deltas,double lower, double upper)
 {
 	double weight = 0;
 	int bins = accumulated_deltas[0].size()-1;
 	for (int i = 0; i < x.size(); ++i)
 	{
 		int b = rand() % bins;
-		binIds[i] = b;
+		
 
 		double top = accumulated_deltas[i][b+1];
 		double bottom = accumulated_deltas[i][b];
 		x[i] = randomval(bottom,top);
 
+		int trueBin = (x[i] - lower)/(upper - lower) * bins;
+		binIds[i] = trueBin;
 		weight += log(top-bottom);
 	}
-	return weight + x.size()*log(bins);
+	// std::cout << "Generated " << JSL::Vector(x) << " with weight " << weight +x.size()*log(bins) << std::endl;
+	return -weight - x.size()*log(bins);
 }
 void accumulate(const std::vector<std::vector<double>> & deltas, std::vector<std::vector<double>> & target,double lower, double upper)
 {
@@ -59,6 +62,8 @@ void accumulate(const std::vector<std::vector<double>> & deltas, std::vector<std
 		target[i][deltas[i].size()] = upper;
 	}
 }
+
+
 
 double fillFromDists(std::vector<double> &x, std::vector<int> & binIds, const std::vector<std::vector<double>> & hists,double lower, double upper)
 {
@@ -90,4 +95,63 @@ double fillFromDists(std::vector<double> &x, std::vector<int> & binIds, const st
 		// std::cout << r << " generated " << histbinIds[i] << " was used to assign! " << std::endl;
 	}
 	return log_weight;
+}
+
+void generateAccumulator(std::vector<std::vector<double>> & accumulate, std::vector<std::vector<double>> & hists, double lower, double upper)
+{
+	int bins = hists[0].size();
+	double delta = (upper - lower)/bins;
+
+	//accumulate contains edges of 1/bin probability
+	
+	for (int d = 0; d < accumulate.size(); ++d)
+	{
+		accumulate[d][0] = lower;
+		accumulate[d][bins] = upper;
+		double runningProb = 0;
+		
+		int histLoc = 0;
+		for (int b = 1; b < bins; ++b)
+		{
+			double target = (double)b/bins;
+			while (runningProb + hists[d][histLoc] <= target)
+			{
+				runningProb += hists[d][histLoc];
+				++histLoc;
+			}
+			double edge2= lower + (double)(histLoc+1)/(bins) * (upper - lower);
+			double edge1 = lower + (double)(histLoc)/(bins) * (upper - lower);
+			double bruch =  (target - runningProb)/(hists[d][histLoc]);
+			double newX = edge1 + bruch*(edge2 - edge1);
+			accumulate[d][b] = newX;
+		}
+	}
+}
+
+void smooth(std::vector<double> & vec)
+{
+	auto original = vec;
+
+	for (int i =0; i < original.size(); ++i)
+	{
+		double w = 1;
+		double s = original[i];
+		double ww = 1;
+		int dist = 1;//std::max(1,(int)original.size()/500);
+		for (int q = 1; q <= dist; ++q)
+		{
+			
+			if (i-q >= 0)
+			{
+				s = ale(original[i-q],s);
+				w +=ww;
+			}
+			if (i+q< original.size())
+			{
+				s = ale(original[i+q],s);
+				w+=ww;
+			}
+		}
+		vec[i] = s - log(w);
+	}
 }

@@ -12,9 +12,6 @@
 
 
 
-
-
-
 void plotter(const std::vector<double> res,const std::vector<std::vector<double>> vals,double trueVal,std::vector<std::string> names)
 {
 
@@ -66,6 +63,7 @@ void plotter(const std::vector<double> res,const std::vector<std::vector<double>
 	gp.SetLegend(true);
 	gp.SetGrid(true);
 	gp.SetXLog(true);
+	// gp.SetGlobalColourMap(vals.size(),{1.0,1.0,0.3},{0,0,1});
 	gp.SetXRange(*std::min_element(res.begin(),res.end()),*std::max_element(res.begin(),res.end()));
 	gp.SetXLabel("Integrator Resolution");
 	gp.SetYLabel("Integrator Value");
@@ -88,49 +86,58 @@ int main(int argc, char** argv)
 	JSL::Argument<int> dim(1,"d",argc,argv);
 	JSL::Argument<int> seed(time(NULL),"s",argc,argv);
 	JSL::Argument<int> testBins(10,"b",argc,argv);
+	JSL::Argument<int> testDepth(1,"u",argc,argv);
 	srand(seed);
+
 	rand();
 	means.resize(dim);
 	errors.resize(dim);
-	randomFill(means,-2,2);
-	randomFill(errors,0.1,0.3);
+	randomFill(means,-8,8);
+	randomFill(errors,0.01,2);
 
-	std::cout << "mus = " << JSL::Vector(means) << std::endl;
-	std::cout << "sigmas = " << JSL::Vector(errors) << std::endl;
+	// std::cout << "mus = " << JSL::Vector(means) << std::endl;
+	// std::cout << "sigmas = " << JSL::Vector(errors) << std::endl;
 
-	int b = testBins;
-	int testR = 1e6;
-	double vm = vegas_MCI(testR,1,b,-20,20);
-	std::cout << "Vegas Estimate = " << vm << std::endl;
-	double vm2 = vegas2_MCI(testR,1,b,-10,10);
-	std::cout << "Vegas2 Estimate = " << vm2 << std::endl;
-	double lm = test_LMCI(testR,-20,20);
-	std::cout << "LMCI Estimate = " << lm << std::endl;
-	exit(5);
+	// int b = testBins;
+	// int testR = 1e5;
+	// int dth = testDepth;
+	// double vm = vegas_MCI(testR,dth,b,-10,10);
+	// std::cout << "Vegas Estimate = " << vm << std::endl;
+	
+	// double lm = test_LMCI(testR,-10,10);
+	// std::cout << "LMCI Estimate = " << lm << std::endl;
+	// exit(5);
 
-	int resdim = 100;
+	int resdim =40;
 	int start = 1e2;
-	int end = 2e5;
+	int end = 1e7;
 	JSL::Vector res = JSL::Vector::logintspace(start,end,resdim);
 
 	std::vector<double> mci(resdim);
+	std::vector<double> mci_vegas(resdim);
 	std::vector<double> lmci(resdim);
 	std::vector<double> gai(resdim,cheat_GAI(means));
 	std::vector<double> lmci_vegas(resdim);
-
+	std::vector<double> lmci_vegas_1(resdim);
+	std::vector<double> lmci_vegas_2(resdim);
+	std::vector<double> lmci_vegas_3(resdim);
 	std::vector<double> gai_optim(resdim);
-	double lower = -20;
-	double upper = 20;
+	double lower = -30;
+	double upper = 30;
 	JSL::ProgressBar pb(resdim);
 	for (int i = 0; i < resdim; ++i)
 	{
-		mci[i] = log(test_MCI(res[i],lower,upper));
+		mci[i] = test_MCI(res[i],lower,upper);
+		mci_vegas[i] = vegas_MCI(res[i],5,50,lower,upper);
 		lmci[i] =(test_LMCI(res[i],lower,upper));
 		gai_optim[i] = (test_GAI(res[i],lower,upper));
-		lmci_vegas[i] = vegas_MCI(res[i],10,100,lower,upper);
+		lmci_vegas[i] = vegas_LMCI(res[i],5,50,lower,upper);
+		lmci_vegas_1[i] = vegas_LMCI(res[i],10,100,lower,upper);
+		// lmci_vegas_2[i] = vegas_LMCI(res[i],10,50,lower,upper);
+		// lmci_vegas_3[i] = vegas_LMCI(res[i],10,100,lower,upper);
 		pb.Update(i);
 	}
 
 	
-	plotter(res,{mci,lmci,gai_optim,gai,lmci_vegas},0,{"MCI","LMCI","GAI","GAI_{Exact}","LMCI-VEGAS"});
+	plotter(res,{mci,mci_vegas,lmci,lmci_vegas,lmci_vegas_1,gai_optim,gai},log(peak),{"MCI","MCI-VEGAS","LMCI","LMCI-VEGAS 5-50","LMCI-VEGAS 5-100","GAI","GAI_{Exact}"});
 }

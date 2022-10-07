@@ -5,6 +5,8 @@
 std::vector<double> means;
 std::vector<double> errors;
 
+double peak = 100;
+
 double func(const std::vector<double> & x)
 {
 	double v = 1;
@@ -14,7 +16,7 @@ double func(const std::vector<double> & x)
 		double d = (x[i] - means[i])/errors[i];
 		v*=invSqrt/errors[i] * exp(-0.5*d*d);
 	}
-	return v;
+	return peak*v;
 }
 double logfunc(const std::vector<double> & x)
 {
@@ -25,7 +27,7 @@ double logfunc(const std::vector<double> & x)
 		double d = (x[i] - means[i])/errors[i];
 		v+= log_invSqrt - log(errors[i]) -0.5*d*d;
 	}
-	return v;
+	return log(peak) + v;
 }
 double ddlogfunc(const std::vector<double> & x, int i, int j)
 {
