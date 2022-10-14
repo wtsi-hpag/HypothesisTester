@@ -5,6 +5,7 @@
 
 double test_LMCI(int res, double lowerBound, double upperBound)
 {
+	Status("LMCI",res);
 	int dim = means.size();
 
 	std::vector<double> x(dim);
@@ -27,6 +28,7 @@ double test_LMCI(int res, double lowerBound, double upperBound)
 
 	double logVolume = dim *log(upperBound - lowerBound);
 	// std::cout << logVolume << std::endl;
+	Complete();
 	return running + logVolume - log(res);
 }
 
@@ -34,6 +36,7 @@ double test_LMCI(int res, double lowerBound, double upperBound)
 
 double vegas_LMCI(int res, int depth, int bins, double lowerBound, double upperBound)
 {
+	Status("V-LMCI",res);
 	int dim = means.size();
 
 	std::vector<std::vector<double>> hists(dim,std::vector<double>(bins,1.0/bins)); 
@@ -160,5 +163,6 @@ double vegas_LMCI(int res, int depth, int bins, double lowerBound, double upperB
 			}
 		}
 	}
+	Complete();
 	return run - log(reservedRes);
 }

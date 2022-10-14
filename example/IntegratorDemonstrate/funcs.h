@@ -1,6 +1,23 @@
 #pragma once
 #include <vector>
 
+
+std::string comp;
+bool isPrinty = false;
+void Status(const std::string & title, int res)
+{
+	if (isPrinty)
+	{
+		comp = title;
+		std::cout << "\tStarting  " << title << " at resolution " << res << std::endl;
+	}
+}
+void Complete()
+{
+	if (isPrinty)
+		std::cout << "\t\t" << comp << " complete " << std::endl;
+}
+
 double randomval(double lower, double upper)
 {
 	return lower + (double)rand()/RAND_MAX * (upper - lower);

@@ -1,4 +1,4 @@
-#include "../HypothesisTester.h"
+#include "../../HypothesisTester.h"
 #include <iostream>
 #include <vector>
 #include "JSL.h"
@@ -8,136 +8,303 @@
 #include "funcs.h"
 #include "lmci.h"
 #include "gai.h"
+#include "rgi.h"
 // JSL::ProgressBar<2>;
 
 
+JSL::gnuplot gp;
 
-void plotter(const std::vector<double> res,const std::vector<std::vector<double>> vals,double trueVal,std::vector<std::string> names)
+namespace lp = JSL::LineProperties;
+
+void PreparePlotter(std::vector<int> & dims)
 {
+	gp.WindowSize(1700,900);
+	gp.SetMultiplot(2,dims.size());
+}
 
 
-	JSL::gnuplot gp;
-	gp.WindowSize(600,800);
-	namespace lp = JSL::LineProperties;
-	// gp.Plot(res,mci,lp::Legend("MCI"),lp::PenSize(2));
-	// gp.Plot(res,lmci,lp::Legend("LMCI"),lp::PenSize(2));
-	// gp.Plot(res,lmci_vegas,lp::Legend("LMCI-VEGAS"),lp::PenSize(2));
-	// gp.Plot(res,gai,lp::Legend("GAI_{Exact}"),lp::PenSize(2));
-	// gp.Plot(res,gai_optim,lp::Legend("GAI"),lp::PenSize(2));
-	// gp.SetLegend(true);
-	// gp.SetXLog(true);
-	// gp.SetYLog(true);
-	// double minVal = *std::min_element(lmci.begin(), lmci.end());
+struct result
+{
+	double time;
+	double result;
+};
 
-	// gp.SetYRange(std::max(minVal,-400.0),5);
-	gp.SetMultiplot(2,1);
-	std::vector<double> errors(res.size());
+struct Test
+{
+	Test(){};
+	Test(std::string n, double (*func)(int,double,double))
+	{
+		Name = n;
+		Function = func;
+	}
+	std::string Name;
+	std::vector<std::vector<result>> Results;
+	virtual void PerformTest(int loops, int res,double lower, double upper)
+	{
+		auto now = std::chrono::system_clock::now();
+		std::vector<result> resultList(loops);
+		for (int i = 0; i < loops; ++i)
+		{
+			
+			double v = Function(res,lower,upper);
+			
+			resultList[i].result = v;
+
+		}
+		std::chrono::duration<double,std::ratio<1,1000>> duration = std::chrono::system_clock::now() - now;
+		for (int i = 0; i < loops; ++i)
+		{
+			resultList[i].time = duration.count()/loops;
+		}
+		Results.push_back(resultList);
+		
+	}
+	typedef double (*functor)(int,double,double); 
+	functor Function;
+};
+struct VegasTest : Test
+{
+	VegasTest(){}
+	VegasTest(std::string n, double (*func)(int,int,int,double,double),int depth,int res) : Test()
+	{
+		Name = n;
+		vFunction = func;
+		vegasDepth = depth;
+		vegasResolution = res;
+	}
+	void PerformTest(int loops, int res,double lower, double upper)
+	{
+		auto now = std::chrono::system_clock::now();
+		std::vector<result> resultList(loops);
+		for (int i = 0; i < loops; ++i)
+		{
+			
+			double v = vFunction(res,vegasDepth,vegasResolution,lower,upper);
+			
+			resultList[i].result = v;
+
+		}
+		std::chrono::duration<double,std::ratio<1,1000>> duration = std::chrono::system_clock::now() - now;
+		for (int i = 0; i < loops; ++i)
+		{
+			resultList[i].time = duration.count()/loops;
+		}
+		Results.push_back(resultList);
+	}
+	double vegasDepth;
+	double vegasResolution;
+	typedef double (*vfunctor)(int,int,int,double,double); 
+	vfunctor vFunction;
+};
+
+void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, std::vector<Test *> & tests,double trueVal)
+{
+	int N = res.size();
+	std::vector<double> errors(N,0.0);
+	std::vector<double> times(N,0);
 
 	double smallestNonBoring  = 1e300;
 	double largest = -1e300;
-	for (int i = 0; i < names.size(); ++i)
+	double shortestTime = 10;
+	double longestTime = -100;
+	double cut = 1e-14;
+	for (int i = 0; i < tests.size(); ++i)
 	{
-		gp.SetAxis(0);
-		gp.Plot(res,vals[i],lp::Legend(names[i]),lp::PenSize(2));
-
-		for (int j = 0; j < res.size(); ++j)
+		for (int j = 0; j < N; ++j)
 		{
-			errors[j] = abs((vals[i][j] - trueVal));
+			// std::cout << i << "  " << j << "  " << JSL::Vector(tests[i]->Results[j][k])
+			double v = 0;
+			double t= 0;
+			int S = tests[i]->Results[j].size();
+			std::vector<double> vals(S);
+			double power = 2;
+			for (int k = 0; k < S; ++k)
+			{
+				v += pow(abs(tests[i]->Results[j][k].result - trueVal),power);
+				t += tests[i]->Results[j][k].time;
+				// std::cout << "At res " << res[j] << " el " << k << " had val " << tests[i]->Results[j][k].result << std::endl;
+			}	
+			// std::cout << "Giving mean " << v/S << std::endl;
+			errors[j] = pow(v/S,1.0/power) + 1e-15;
+			times[j] = t/S;
 		}
+
 		double minVal = *std::min_element(errors.begin(),errors.end());
 		double maxVal = *std::max_element(errors.begin(),errors.end());
-		if (minVal > 1e-12 && minVal < smallestNonBoring && !std::isinf(minVal))
+		double minTim = *std::min_element(times.begin(),times.end());
+		double maxTim = *std::max_element(times.begin(),times.end());
+		if (minVal > cut && !std::isinf(minVal))
 		{
-			smallestNonBoring = minVal;
+			if (minVal < smallestNonBoring)
+			{
+				smallestNonBoring = minVal;
+			}
+			if (minTim < shortestTime && maxVal < 1e6)
+			{
+				shortestTime = minTim;
+				// std::cout << "New short with " << tests[i]->Name << std::endl;
+			}
 		}
-		if (maxVal > largest && !std::isinf(maxVal))
+		if (!std::isinf(maxVal))
 		{
-			largest = maxVal;
+			if (maxVal > largest)
+			{
+				largest = maxVal;
+			}
+			if (maxTim > longestTime && minVal > cut && maxVal > cut)
+			{
+				longestTime = maxTim;
+				// std::cout << "New long with " << tests[i]->Name << "  " << minVal << "  " << maxVal << std::endl;
+			}
 		}
-		std::cout << minVal << "  " << maxVal << "  " << smallestNonBoring << "  " << largest << std::endl;
-		gp.SetAxis(1);
-		gp.Plot(res,errors,lp::PenSize(2));
+		
+
+		if (tests[i]->Name.find("L") == std::string::npos)
+		{
+
+			gp.SetAxis(0,dimID);
+			gp.Plot(res,errors,lp::PenSize(2),lp::Legend(tests[i]->Name));
+
+			gp.SetAxis(1,dimID);
+			gp.Plot(times,errors,lp::PenSize(2));
+		}
+		else
+		{
+			gp.SetAxis(0,dimID);
+			gp.Plot(res,errors,lp::PenSize(2),lp::Legend(tests[i]->Name),lp::Colour("hold"),lp::PenType(JSL::Dash));
+
+			gp.SetAxis(1,dimID);
+			gp.Plot(times,errors,lp::PenSize(2),lp::Colour("hold"),lp::PenType(JSL::Dash));
+		}
+		// std::cout << tests[i]->Name << " has " << JSL::Vector(errors) << std::endl;
 	}
 
-	gp.SetAxis(0);
-	gp.SetLegend(true);
-	gp.SetGrid(true);
-	gp.SetXLog(true);
-	// gp.SetGlobalColourMap(vals.size(),{1.0,1.0,0.3},{0,0,1});
-	gp.SetXRange(*std::min_element(res.begin(),res.end()),*std::max_element(res.begin(),res.end()));
-	gp.SetXLabel("Integrator Resolution");
-	gp.SetYLabel("Integrator Value");
-	// gp.SetYLog(true);
-	gp.SetAxis(1);
+	std::cout << smallestNonBoring << "  " << largest  << std::endl;
+	smallestNonBoring = pow(10,floor(log10(smallestNonBoring)));
+	largest = pow(10,ceil(log10(largest)));
+	std::cout << smallestNonBoring << "  " << largest << "\n\n\n";
+	if (smallestNonBoring < 1e-9)
+	{
+		smallestNonBoring = 1e-9;
+	}
+	// std::cout << "Time = " << shortestTime << "  " << longestTime << "\n\n" << std::endl;
+	gp.SetAxis(0,dimID);
+	gp.SetTitle("Dimension = " + std::to_string(dims[dimID]));
 	gp.SetGrid(true);
 	gp.SetXLog(true);
 	gp.SetYLog(true);
 	gp.SetYRange(smallestNonBoring,largest);
-	gp.SetXRange(*std::min_element(res.begin(),res.end()),*std::max_element(res.begin(),res.end()));
-	gp.SetYLabel("Log-Fractional Error");
+	gp.SetYTicPowerFormat(true);
+	gp.SetXTicPowerFormat(true);
+	gp.SetYLabel("");
+	if (dimID == 0)
+	{
+		gp.SetYLabel("Difference of Logs");
+		gp.SetLegend(true);
+		gp.SetLegendLocation("bottom right");
+	}
+	gp.SetXLabel("");
 	gp.SetXLabel("Integrator Resolution");
-	gp.Show();
-
+	// if (dimID == dims.size()/2)
+	// {
+	// 	gp.SetXLabel("Integrator Resolution");
+	// }
+	gp.SetAxis(1,dimID);
+	// gp.SetTitle("Dimension = " + std::to_string(dims[dimID]));
+	gp.SetGrid(true);
+	gp.SetXLog(true);
+	gp.SetYLog(true);
+	gp.SetYTicPowerFormat(true);
+	gp.SetXTicPowerFormat(true);
+	gp.SetYRange(smallestNonBoring,largest);
+	gp.SetXRange(shortestTime,longestTime);
+	gp.SetYLabel("");
+	if (dimID == 0)
+	{
+		gp.SetYLabel("Difference of Logs");
+	}
+	gp.SetXLabel("Execution Time (ms)");
+	// if (dimID == dims.size()/2)
+	// {
+	// 	gp.SetXLabel("Execution Time (ms)");
+	// }
+	if (dimID == dims.size() - 1)
+	{
+		gp.Show();
+	}
 }
 
 
 int main(int argc, char** argv)
 {
-	JSL::Argument<int> dim(1,"d",argc,argv);
+	JSL::Argument<int> dimInput(1,"d",argc,argv);
+	// PreparePlotter
 	JSL::Argument<int> seed(time(NULL),"s",argc,argv);
 	JSL::Argument<int> testBins(10,"b",argc,argv);
 	JSL::Argument<int> testDepth(1,"u",argc,argv);
 	srand(seed);
 
 	rand();
-	means.resize(dim);
-	errors.resize(dim);
-	randomFill(means,-8,8);
-	randomFill(errors,0.01,2);
 
-	// std::cout << "mus = " << JSL::Vector(means) << std::endl;
-	// std::cout << "sigmas = " << JSL::Vector(errors) << std::endl;
-
-	// int b = testBins;
-	// int testR = 1e5;
-	// int dth = testDepth;
-	// double vm = vegas_MCI(testR,dth,b,-10,10);
-	// std::cout << "Vegas Estimate = " << vm << std::endl;
+	std::vector<int> dims = {1,4,12};
+	PreparePlotter(dims);
+	int resdim =40;
+	int start = 2;
+	int end = 3e5;
+	JSL::Vector res = JSL::Vector::logintspace(start,end,resdim);
+	resdim = res.Size();
 	
-	// double lm = test_LMCI(testR,-10,10);
-	// std::cout << "LMCI Estimate = " << lm << std::endl;
+	int dim = dimInput;
+	// means.resize(dim);
+	// errors.resize(dim);
+	// randomFill(means,-5,5);
+	// randomFill(errors,0.01,2);
+	// basic_GAI(1000,-30,30);
+
 	// exit(5);
 
-	int resdim =40;
-	int start = 1e2;
-	int end = 1e7;
-	JSL::Vector res = JSL::Vector::logintspace(start,end,resdim);
-
-	std::vector<double> mci(resdim);
-	std::vector<double> mci_vegas(resdim);
-	std::vector<double> lmci(resdim);
-	std::vector<double> gai(resdim,cheat_GAI(means));
-	std::vector<double> lmci_vegas(resdim);
-	std::vector<double> lmci_vegas_1(resdim);
-	std::vector<double> lmci_vegas_2(resdim);
-	std::vector<double> lmci_vegas_3(resdim);
-	std::vector<double> gai_optim(resdim);
-	double lower = -30;
-	double upper = 30;
-	JSL::ProgressBar pb(resdim);
-	for (int i = 0; i < resdim; ++i)
+	int amount;
+	JSL::ProgressBar<2> pb(dims.size(),resdim);
+	
+	for (int q = 0; q < dims.size(); ++q)
 	{
-		mci[i] = test_MCI(res[i],lower,upper);
-		mci_vegas[i] = vegas_MCI(res[i],5,50,lower,upper);
-		lmci[i] =(test_LMCI(res[i],lower,upper));
-		gai_optim[i] = (test_GAI(res[i],lower,upper));
-		lmci_vegas[i] = vegas_LMCI(res[i],5,50,lower,upper);
-		lmci_vegas_1[i] = vegas_LMCI(res[i],10,100,lower,upper);
-		// lmci_vegas_2[i] = vegas_LMCI(res[i],10,50,lower,upper);
-		// lmci_vegas_3[i] = vegas_LMCI(res[i],10,100,lower,upper);
-		pb.Update(i);
+		dim = dims[q];
+		means.resize(dim);
+		errors.resize(dim);
+		randomFill(means,-5,5);
+		randomFill(errors,0.01,2);
+		Test MCI("MCI",&test_MCI);
+		Test LMCI("LMCI",*test_LMCI);
+		Test RGI("RGI",test_RGI);
+		Test LRGI("LRGI",test_LRGI);
+		Test GAI("GAI-Function",test_GAI);
+		Test eGAI("GAI-Full",&exact_GAI);
+		Test bGAI("GAI-BASIC",basic_GAI);
+		VegasTest vMCI("MCI-V",&vegas_MCI,5,50);
+		VegasTest vLMCI("LMCI-V",&vegas_LMCI,5,50);
+		VegasTest vdMCI("MCI-V-Deep",&vegas_MCI,20,100);
+		VegasTest vdLMCI("LMCI-Deep",&vegas_LMCI,20,100);
+		double lower = -20;
+		double upper = 20;
+		
+		std::vector<Test *> tests = {&RGI,&LRGI,&MCI,&LMCI,&vMCI,&vLMCI,&vdMCI,&vdLMCI,&bGAI,&GAI,&eGAI};
+		// std::vector<Test *> tests = {&RGI,&LMCI,&bGAI,&GAI,&eGAI};
+		// std::cout << "Beginning" << std::endl;
+		
+		for (int i = 0; i < resdim; ++i)
+		{
+			//exact_GAI(means)
+			int ceil = std::min(100, (int)((double)end/res[i]));
+			amount = std::max(4,ceil);
+			for (int j = 0; j < tests.size(); ++j)
+			{
+				tests[j]->PerformTest(amount,res[i],lower,upper);
+			}
+			pb.Update(q,i);
+		}
+		double trueVal = eGAI.Results[0][0].result; //
+		plotter(q,dims,res,tests,trueVal);
 	}
 
-	
-	plotter(res,{mci,mci_vegas,lmci,lmci_vegas,lmci_vegas_1,gai_optim,gai},log(peak),{"MCI","MCI-VEGAS","LMCI","LMCI-VEGAS 5-50","LMCI-VEGAS 5-100","GAI","GAI_{Exact}"});
+
 }

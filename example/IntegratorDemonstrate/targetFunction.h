@@ -5,7 +5,7 @@
 std::vector<double> means;
 std::vector<double> errors;
 
-double peak = 100;
+double peak = 1;
 
 double func(const std::vector<double> & x)
 {
