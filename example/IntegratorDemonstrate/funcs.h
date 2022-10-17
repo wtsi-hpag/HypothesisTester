@@ -34,23 +34,25 @@ void randomFill(std::vector<double> & out, double lower, double upper)
 }
 
 
-double ale(double a, double b)
+inline double ale(double a, double b)
 {
-	if (a > b)
-	{
-		return a + log(1.0 + exp(b - a));
-	}
-	else
-	{
-		return b + log(1.0 + exp(a - b));
-	}
+	// if (a > b)
+	// {
+	// 	return a + log(1.0 + exp(b - a));
+	// }
+	// else
+	// {
+	// 	return b + log(1.0 + exp(a - b));
+	// }
+	return std::max(a,b) + log(1.0 + exp(-abs(b-a)));
 }
 
 
 double fillFromDeltas(std::vector<double> &x, std::vector<int> & binIds, const std::vector<std::vector<double>> & accumulated_deltas,double lower, double upper)
 {
 	double weight = 0;
-	int bins = accumulated_deltas[0].size()-1;
+	const int bins = accumulated_deltas[0].size()-1;
+	const double bruch = (double)bins/(upper - lower);
 	for (int i = 0; i < x.size(); ++i)
 	{
 		int b = rand() % bins;
@@ -60,7 +62,7 @@ double fillFromDeltas(std::vector<double> &x, std::vector<int> & binIds, const s
 		double bottom = accumulated_deltas[i][b];
 		x[i] = randomval(bottom,top);
 
-		int trueBin = (x[i] - lower)/(upper - lower) * bins;
+		int trueBin = (x[i] - lower) * bruch;
 		binIds[i] = trueBin;
 		weight += log(top-bottom);
 	}
