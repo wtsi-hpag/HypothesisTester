@@ -1,4 +1,4 @@
-#define GNUPLOT_NO_TIDY
+// #define GNUPLOT_NO_TIDY
 #include "../../HypothesisTester.h"
 #include <iostream>
 #include <vector>

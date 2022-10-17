@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <math.h>
+#include <assert.h>
 #include <string>
 #include "matrix.h"
 double explogadd(double loga, double logb)
