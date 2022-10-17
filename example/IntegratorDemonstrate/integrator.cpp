@@ -1,4 +1,4 @@
-// #define GNUPLOT_NO_TIDY
+#define GNUPLOT_NO_TIDY
 #include "../../HypothesisTester.h"
 #include <iostream>
 #include <vector>
@@ -10,18 +10,19 @@
 #include "lmci.h"
 #include "gai.h"
 #include "rgi.h"
+
 // JSL::ProgressBar<2>;
 
 
 JSL::gnuplot gp;
 
 namespace lp = JSL::LineProperties;
-
+std::string fileOutput = "test.eps";
 void PreparePlotter(std::vector<int> & dims)
 {
-	gp.WindowSize(1700,900);
-	gp.SetTerminal("eps");
-	gp.SetOutput("test.eps");
+	// gp.WindowSize(1700,900);
+	// gp.SetTerminal("eps");
+	// gp.SetOutput(fileOutput);
 	gp.SetMultiplot(2,dims.size());
 }
 
@@ -35,22 +36,34 @@ struct result
 struct Test
 {
 	Test(){};
-	Test(std::string n, double (*func)(int,double,double))
+	Test(std::string n, double (*func)(int,double,double),bool prevCol,JSL::LineType type)
 	{
 		Name = n;
 		Function = func;
+		PrevColour = prevCol;
+		Style = type;
+	}
+	void Prepare(std::vector<int> resolutions)
+	{
+		Results.resize(resolutions.size());
 	}
 	std::string Name;
 	std::vector<std::vector<result>> Results;
-	virtual void PerformTest(int loops, int res,double lower, double upper)
+	virtual void PerformTest(int loops, int res,int resID,double lower, double upper)
 	{
+		if (Name.find("GAI") != std::string::npos && res > 1e5)
+		{
+			Results[resID] = Results[resID-1];
+			return;
+		}
 		auto now = std::chrono::system_clock::now();
 		std::vector<result> resultList(loops);
+		double mVal = 0;
 		for (int i = 0; i < loops; ++i)
 		{
 			
 			double v = Function(res,lower,upper);
-			
+			mVal += v;
 			resultList[i].result = v;
 
 		}
@@ -59,23 +72,27 @@ struct Test
 		{
 			resultList[i].time = duration.count()/loops;
 		}
-		Results.push_back(resultList);
+		Results[resID] = resultList;
 		
 	}
 	typedef double (*functor)(int,double,double); 
 	functor Function;
+	bool PrevColour;
+	JSL::LineType Style = JSL::Solid;
 };
 struct VegasTest : Test
 {
 	VegasTest(){}
-	VegasTest(std::string n, double (*func)(int,int,int,double,double),int depth,int res) : Test()
+	VegasTest(std::string n, double (*func)(int,int,int,double,double),int depth,int res,bool prevCol,JSL::LineType type) : Test()
 	{
 		Name = n;
 		vFunction = func;
 		vegasDepth = depth;
 		vegasResolution = res;
+		PrevColour = prevCol;
+		Style = type;
 	}
-	void PerformTest(int loops, int res,double lower, double upper)
+	void PerformTest(int loops, int res,int resID,double lower, double upper)
 	{
 		auto now = std::chrono::system_clock::now();
 		std::vector<result> resultList(loops);
@@ -92,7 +109,7 @@ struct VegasTest : Test
 		{
 			resultList[i].time = duration.count()/loops;
 		}
-		Results.push_back(resultList);
+		Results[resID] = resultList;
 	}
 	double vegasDepth;
 	double vegasResolution;
@@ -115,7 +132,6 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 	{
 		for (int j = 0; j < N; ++j)
 		{
-			// std::cout << i << "  " << j << "  " << JSL::Vector(tests[i]->Results[j][k])
 			double v = 0;
 			double t= 0;
 			int S = tests[i]->Results[j].size();
@@ -125,9 +141,7 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 			{
 				v += pow(abs(tests[i]->Results[j][k].result - trueVal),power);
 				t += tests[i]->Results[j][k].time;
-				// std::cout << "At res " << res[j] << " el " << k << " had val " << tests[i]->Results[j][k].result << std::endl;
 			}	
-			// std::cout << "Giving mean " << v/S << std::endl;
 			errors[j] = pow(v/S,1.0/power)/dims[dimID] + 1e-15;
 			times[j] = t/S;
 		}
@@ -145,7 +159,6 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 			if (minTim < shortestTime && maxVal < 1e6)
 			{
 				shortestTime = minTim;
-				// std::cout << "New short with " << tests[i]->Name << std::endl;
 			}
 		}
 		if (!std::isinf(maxVal))
@@ -157,36 +170,38 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 			if (maxTim > longestTime && minVal > cut && maxVal > cut)
 			{
 				longestTime = maxTim;
-				// std::cout << "New long with " << tests[i]->Name << "  " << minVal << "  " << maxVal << std::endl;
 			}
 		}
-		
+		int pS = 1;
 		std::string name = tests[i]->Name;
-		if (name.find("L") == std::string::npos)
+
+
+		if (name == "GAI-Full")
 		{
 			gp.SetAxis(0,dimID);
-			gp.Plot(res,errors,lp::PenSize(2),lp::Legend(tests[i]->Name));
-
+			gp.Plot(res,errors,lp::PenSize(pS),lp::Legend(tests[i]->Name));
 			gp.SetAxis(1,dimID);
-			if (name.find("GAI-Full")==std::string::npos)
-			{
-				gp.Plot(times,errors,lp::PenSize(2));
-			}
-			else
-			{
-				gp.Scatter(times,errors,lp::ScatterType(JSL::FilledCircle),lp::PenSize(10));
-			}
+			double mT = JSL::Vector(times).Sum()/times.size();
+			double mE = JSL::Vector(errors).Sum()/errors.size();
+			gp.Scatter(std::vector<double>{mT},std::vector<double>{mE},lp::ScatterType(JSL::FilledDelta),lp::PenSize(1));
 		}
 		else
 		{
-			gp.SetAxis(0,dimID);
-			gp.Plot(res,errors,lp::PenSize(2),lp::Legend(tests[i]->Name),lp::Colour("hold"),lp::PenType(JSL::Dash));
-
-			gp.SetAxis(1,dimID);
-			
-			gp.Plot(times,errors,lp::PenSize(2),lp::Colour("hold"),lp::PenType(JSL::Dash));
+			if (tests[i]->PrevColour && i > 0)
+			{
+				gp.SetAxis(0,dimID);
+				gp.Plot(res,errors,lp::PenSize(pS),lp::Legend(tests[i]->Name),lp::PenType(tests[i]->Style),lp::Colour("hold"));
+				gp.SetAxis(1,dimID);
+				gp.Plot(times,errors,lp::PenSize(pS),lp::Legend(tests[i]->Name),lp::Colour("hold"),lp::PenType(tests[i]->Style));
+			}
+			else
+			{
+				gp.SetAxis(0,dimID);
+				gp.Plot(res,errors,lp::PenSize(pS),lp::Legend(tests[i]->Name),lp::PenType(tests[i]->Style));
+				gp.SetAxis(1,dimID);
+				gp.Plot(times,errors,lp::PenSize(pS),lp::Legend(tests[i]->Name),lp::PenType(tests[i]->Style));
+			}
 		}
-		// std::cout << tests[i]->Name << " has " << JSL::Vector(errors) << std::endl;
 	}
 
 	smallestNonBoring = pow(10,floor(log10(smallestNonBoring)));
@@ -195,7 +210,6 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 	{
 		smallestNonBoring = 1e-9;
 	}
-	// std::cout << "Time = " << shortestTime << "  " << longestTime << "\n\n" << std::endl;
 	gp.SetAxis(0,dimID);
 	gp.SetTitle("Dimension = " + std::to_string(dims[dimID]));
 	gp.SetGrid(true);
@@ -213,6 +227,8 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 	{
 		gp.SetLegend(true);
 		gp.SetLegendLocation("bottom right");
+		gp.SetLegendColumns(2);
+		gp.SetFontSize(JSL::Fonts::Legend,5);
 	}
 	gp.SetXLabel("");
 	gp.SetXLabel("Integrator Resolution");
@@ -220,6 +236,7 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 	// {
 	// 	gp.SetXLabel("Integrator Resolution");
 	// }
+	gp.SetFontSize(JSL::Fonts::Global,7);
 	gp.SetAxis(1,dimID);
 	// gp.SetTitle("Dimension = " + std::to_string(dims[dimID]));
 	gp.SetGrid(true);
@@ -235,16 +252,33 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 		gp.SetYLabel("Per-Dimensional Logarithmic Error");
 	}
 	gp.SetXLabel("Execution Time (ms)");
-	// if (dimID == dims.size()/2)
-	// {
-	// 	gp.SetXLabel("Execution Time (ms)");
-	// }
-	if (dimID == dims.size() - 1)
-	{
-		gp.Show();
-	}
+
 }
 
+
+const double lower = -100;
+const double upper = 100;
+const int minLoops = 5;
+const int maxLoops = 30;
+void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vector<int> amounts,int block, int nBlocks,JSL::ProgressBar<2> & pb, int dim)
+{
+	int testCount = tests.size();
+	const int resDim = resolutions.size();
+
+	for (int j = 0; j < resDim; ++j)
+	{
+		for (int i = block; i < testCount; i+=nBlocks)
+		{
+			tests[i]->PerformTest(amounts[j],resolutions[j],j,lower,upper);
+		}
+
+		if (block == nBlocks - 1)
+		{
+			pb.Update(dim,j);
+		}
+	}
+
+}
 
 int main(int argc, char** argv)
 {
@@ -253,60 +287,88 @@ int main(int argc, char** argv)
 	JSL::Argument<int> seed(time(NULL),"s",argc,argv);
 	JSL::Argument<int> testBins(10,"b",argc,argv);
 	JSL::Argument<int> testDepth(1,"u",argc,argv);
+	JSL::Argument<std::string> file("test.eps","o",argc,argv);
+	JSL::Argument<int> nThreads(3,"n",argc,argv);
+	const int threadCount = nThreads;
+	fileOutput = file;
 	srand(seed);
 
 	rand();
 
-	std::vector<int> dims = {1,4,12};
+	std::vector<int> dims = {10,20,30};
 	PreparePlotter(dims);
-	int resdim =4;
-	int start = 1e2;
-	int end = 1e6;
+	int resdim =6;
+	int start = 1e1;
+	int end = 1e7;
 	JSL::Vector res = JSL::Vector::logintspace(start,end,resdim);
-	resdim = res.Size();
 	
+	resdim = res.Size();
+	std::vector<int> resolutions = res;
+	std::vector<int> amounts(resdim);
+	for (int i = 0; i < resdim; ++i)
+	{
+		int amount = std::max(minLoops,std::min(maxLoops,(int)(resolutions[resdim-1]/resolutions[i])));
+		amounts[i] = amount;
+	}
 	int dim = dimInput;
 
 	int amount;
-	JSL::ProgressBar<2,true,'#',50> pb(dims.size(),resdim);
+	JSL::ProgressBar<2> pb(dims.size(),resdim);
 	
+	std::vector<std::thread> threads(threadCount);
+
+	
+	Test MCI("MCI",&test_MCI,false,JSL::Solid);
+	Test LMCI("LMCI",*test_LMCI,true,JSL::Dash);
+	Test RGI("RGI",test_RGI,false,JSL::Solid);
+	Test LRGI("LRGI",test_LRGI,true,JSL::Dash);
+	Test GAI("GAI-Function",test_GAI,true,JSL::Dash);
+	Test eGAI("GAI-Full",&exact_GAI,false,JSL::Solid);
+	Test bGAI("GAI-BASIC",basic_GAI,false,JSL::Solid);
+	int mciD = 5;
+	int mciR = 15;
+	double fac = 2;
+	// VegasTest vMCI("MCI-V",&vegas_MCI,mciD,mciR,false,JSL::Solid);
+	VegasTest vLMCI("Log-Vegas",&vegas_LMCI,mciD,mciR,false,JSL::Solid);
+	VegasTest vdMCI("Log-Vegas-Half",&vegas_LMCI,mciD,mciR/fac,true,JSL::Dash);
+	VegasTest vdLMCI("Log-Vegas-Double",&vegas_LMCI,mciD*fac,mciR*fac,true,JSL::Dotted);
+	// VegasTest vvdLMCI("Log-Vegas-Massive",&vegas_LMCI,10,50,false,JSL::Dotted);
+	
+	// std::vector<Test *> tests = {&RGI,&LRGI,&MCI,&LMCI,&vLMCI,&vdMCI,&vdLMCI,&vvdLMCI,&bGAI,&GAI,&eGAI};
+
+	std::vector<Test *> tests = {&LMCI,&vLMCI,&vdMCI,&vdLMCI,&eGAI};
+
 	for (int q = 0; q < dims.size(); ++q)
 	{
 		dim = dims[q];
 		means.resize(dim);
 		errors.resize(dim);
-		randomFill(means,-0,0);
-		randomFill(errors,1,1);
-		Test MCI("MCI",&test_MCI);
-		Test LMCI("LMCI",*test_LMCI);
-		Test RGI("RGI",test_RGI);
-		Test LRGI("LRGI",test_LRGI);
-		Test GAI("GAI-Function",test_GAI);
-		Test eGAI("GAI-Full",&exact_GAI);
-		Test bGAI("GAI-BASIC",basic_GAI);
-		VegasTest vMCI("MCI-V",&vegas_MCI,5,50);
-		VegasTest vLMCI("LMCI-V",&vegas_LMCI,5,50);
-		VegasTest vdMCI("MCI-V-Deep",&vegas_MCI,20,1000);
-		VegasTest vdLMCI("LMCI-Deep",&vegas_LMCI,20,1000);
-		double lower = -100;
-		double upper = 100;
+		randomFill(means,-5,5);
+		randomFill(errors,0.02,1);
 		
-		std::vector<Test *> tests = {&RGI,&LRGI,&MCI,&LMCI,&vMCI,&vLMCI,&bGAI,&GAI,&eGAI};
-		// std::vector<Test *> tests = {&RGI,&LMCI,&bGAI,&GAI,&eGAI};
-		// std::cout << "Beginning" << std::endl;
-		
-		for (int i = 0; i < resdim; ++i)
+		for (auto t : tests)
 		{
-			//exact_GAI(means)
-			int ceil = std::min(500, (int)((double)end/res[i]));
-			amount = std::max(10,ceil);
-			for (int j = 0; j < tests.size(); ++j)
-			{
-				tests[j]->PerformTest(amount,res[i],lower,upper);
-			}
-			pb.Update(q,i);
+			t->Prepare(resolutions);
 		}
-		// double trueVal = 0;//eGAI.Results[0][0].result; //
+
+		for (int b = 0; b < threadCount; ++b)
+		{
+			threads[b] = std::thread(TestBlock,tests,resolutions,amounts,b,threadCount,std::ref(pb),q);
+		}
+
+		for (int b = 0; b < threadCount; ++b)
+		{
+			threads[b].join();
+			// pb.Update(q,b);
+		}
+		// for (int i = 0; i < resdim; ++i)
+		// {
+		// 	for (int j = 0; j < tests.size(); ++j)
+		// 	{
+		// 		tests[j]->PerformTest(amounts[i],res[i],lower,upper);
+		// 	}
+		// 	
+		// }
 
 		double trueVal = 0;
 		for (int q = 0; q < dim; ++q)
@@ -318,7 +380,8 @@ int main(int argc, char** argv)
 
 
 		plotter(q,dims,res,tests,trueVal);
+		// gp.Show();
 	}
 
-
+	gp.Show();
 }

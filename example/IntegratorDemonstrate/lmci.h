@@ -40,6 +40,7 @@ double vegas_LMCI(int res, int depth, int bins, double lowerBound, double upperB
 
 	int reservedRes = res/2;
 	int resPerDepth = std::max((res - reservedRes)/depth,10);
+	
 	// std::cout << "Res per depth = " << resPerDepth << std::endl;
 	std::vector<double> x(dim);
 	std::vector<int> x_id(dim);
@@ -126,6 +127,5 @@ double vegas_LMCI(int res, int depth, int bins, double lowerBound, double upperB
 			}
 		}
 	}
-	Complete();
 	return run - log(reservedRes);
 }
