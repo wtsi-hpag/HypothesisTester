@@ -385,11 +385,11 @@ int main(int argc, char** argv)
 		}
 
 
-		plotter(q,dims,res,tests,trueVal);
+		// plotter(q,dims,res,tests,trueVal);
 		// gp.Show();
 	}
 
-	gp.Show();
+	// gp.Show();
 	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
 	std::cout << "Evaluation took " << JSL::FormatDuration(duration.count()) << std::endl;
 }
