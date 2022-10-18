@@ -282,6 +282,7 @@ void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vec
 
 int main(int argc, char** argv)
 {
+	auto now = std::chrono::system_clock::now();
 	std::cout << "Integrator test initialised" << std::endl;
 	JSL::Argument<int> dimInput(1,"d",argc,argv);
 	// PreparePlotter
@@ -298,9 +299,9 @@ int main(int argc, char** argv)
 
 	std::vector<int> dims = {10,20,30};
 	PreparePlotter(dims);
-	int resdim =6;
+	int resdim =20;
 	int start = 1e1;
-	int end = 1e7;
+	int end = 1e5;
 	JSL::Vector res = JSL::Vector::logintspace(start,end,resdim);
 	
 	resdim = res.Size();
@@ -359,10 +360,10 @@ int main(int argc, char** argv)
 			threads[b] = std::thread(TestBlock,tests,resolutions,amounts,b,threadCount);
 		}
 		TestBlock(tests,resolutions,amounts,threadCount-1,threadCount);
-		std::cout << "Local thread completed" << std::endl;
+		std::cout << "\tLocal thread completed" << std::endl;
 		for (int b = 0; b < threadCount-1; ++b)
 		{
-			std::cout << "Attempting a join on " << b << std::endl;
+			std::cout << "\tAttempting a join on " << b << std::endl;
 			threads[b].join();
 			// pb.Update(q,b);
 		}
@@ -389,4 +390,6 @@ int main(int argc, char** argv)
 	}
 
 	gp.Show();
+	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
+	std::cout << "Evaluation took " << JSL::FormatDuration(duration.count()) << std::endl;
 }
