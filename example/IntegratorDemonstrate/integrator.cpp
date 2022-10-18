@@ -379,10 +379,10 @@ int main(int argc, char** argv)
 		// }
 
 		double trueVal = 0;
-		for (int q = 0; q < dim; ++q)
+		for (int t = 0; t < dim; ++t)
 		{
-			double d1 = atan((upper-means[q])/errors[q])/M_PI;
-			double d2= atan((lower - means[q])/errors[q])/M_PI;
+			double d1 = atan((upper-means[t])/errors[t])/M_PI;
+			double d2= atan((lower - means[t])/errors[t])/M_PI;
 			trueVal += log(d1 - d2);
 		}
 
@@ -394,4 +394,6 @@ int main(int argc, char** argv)
 	gp.Show();
 	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
 	std::cout << "Evaluation took " << JSL::FormatDuration(duration.count()) << std::endl;
+
+	return 0;
 }
