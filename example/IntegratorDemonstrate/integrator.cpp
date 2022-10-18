@@ -356,6 +356,7 @@ int main(int argc, char** argv)
 			t->Prepare(resolutions);
 		}
 
+		
 		for (int b = 0; b < threadCount-1; ++b)
 		{
 			std::cout << "\tLaunching thread " << b << std::endl;
@@ -363,11 +364,23 @@ int main(int argc, char** argv)
 		}
 		TestBlock(tests,resolutions,amounts,threadCount-1,threadCount);
 		std::cout << "\tLocal thread completed" << std::endl;
-		for (int b = 0; b < threadCount-1; ++b)
+		// for (int b = 0; b < threadCount-1; ++b)
+		// {
+		// 	std::cout << "\tAttempting a join on " << b << std::endl;
+		// 	threads[b].join();
+		// 	// pb.Update(q,b);
+		// }
+		int joined = 0;
+		while (joined < threadCount - 1)
 		{
-			std::cout << "\tAttempting a join on " << b << std::endl;
-			threads[b].join();
-			// pb.Update(q,b);
+			for (int b = 0; b < threadCount-1; ++b)
+			{
+				if (threads[b].joinable())
+				{
+					threads[b].join();
+					++joined;
+				}
+			}
 		}
 		// for (int i = 0; i < resdim; ++i)
 		// {
