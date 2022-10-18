@@ -172,7 +172,7 @@ void plotter(int dimID, std::vector<int> & dims, const std::vector<double> res, 
 				longestTime = maxTim;
 			}
 		}
-		int pS = 1;
+		int pS = 3;
 		std::string name = tests[i]->Name;
 
 
@@ -262,6 +262,7 @@ const int minLoops = 5;
 const int maxLoops = 30;
 void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vector<int> amounts,int block, int nBlocks)
 {
+	auto now = std::chrono::system_clock::now();
 	int testCount = tests.size();
 	const int resDim = resolutions.size();
 
@@ -277,7 +278,8 @@ void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vec
 		// 	pb.Update(dim,j);
 		// }
 	}
-	std::cout << "\tBlock " << block << " complete, waiting for join " << std::endl;
+	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
+	std::cout << "\tBlock " << block << " completed in " << JSL::FormatDuration(duration.count()) << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -385,11 +387,11 @@ int main(int argc, char** argv)
 		}
 
 
-		// plotter(q,dims,res,tests,trueVal);
+		plotter(q,dims,res,tests,trueVal);
 		// gp.Show();
 	}
 
-	// gp.Show();
+	gp.Show();
 	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
 	std::cout << "Evaluation took " << JSL::FormatDuration(duration.count()) << std::endl;
 }
