@@ -21,8 +21,8 @@ std::string fileOutput = "test.eps";
 void PreparePlotter(std::vector<int> & dims)
 {
 	// gp.WindowSize(1700,900);
-	// gp.SetTerminal("eps");
-	// gp.SetOutput(fileOutput);
+	gp.SetTerminal("eps");
+	gp.SetOutput(fileOutput);
 	gp.SetMultiplot(2,dims.size());
 }
 
