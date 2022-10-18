@@ -260,7 +260,7 @@ const double lower = -100;
 const double upper = 100;
 const int minLoops = 5;
 const int maxLoops = 30;
-void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vector<int> amounts,int block, int nBlocks,JSL::ProgressBar<2> & pb, int dim)
+void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vector<int> amounts,int block, int nBlocks)
 {
 	int testCount = tests.size();
 	const int resDim = resolutions.size();
@@ -316,7 +316,7 @@ int main(int argc, char** argv)
 	int amount;
 	JSL::ProgressBar<2> pb(dims.size(),resdim);
 	
-	std::vector<std::thread> threads(threadCount);
+	std::vector<std::thread> threads(threadCount-1);
 
 	std::cout << "Thread vector initialised to size " << threadCount << std::endl;
 	Test MCI("MCI",&test_MCI,false,JSL::Solid);
@@ -353,14 +353,16 @@ int main(int argc, char** argv)
 			t->Prepare(resolutions);
 		}
 
-		for (int b = 0; b < threadCount; ++b)
+		for (int b = 0; b < threadCount-1; ++b)
 		{
 			std::cout << "\tLaunching thread " << b << std::endl;
-			threads[b] = std::thread(TestBlock,tests,resolutions,amounts,b,threadCount,std::ref(pb),q);
+			threads[b] = std::thread(TestBlock,tests,resolutions,amounts,b,threadCount);
 		}
-
-		for (int b = 0; b < threadCount; ++b)
+		TestBlock(tests,resolutions,amounts,threadCount-1,threadCount);
+		std::cout << "Local thread completed" << std::endl;
+		for (int b = 0; b < threadCount-1; ++b)
 		{
+			std::cout << "Attempting a join on " << b << std::endl;
 			threads[b].join();
 			// pb.Update(q,b);
 		}
