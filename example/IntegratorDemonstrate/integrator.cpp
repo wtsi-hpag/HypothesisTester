@@ -272,16 +272,17 @@ void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vec
 			tests[i]->PerformTest(amounts[j],resolutions[j],j,lower,upper);
 		}
 
-		if (block == nBlocks - 1)
-		{
-			pb.Update(dim,j);
-		}
+		// if (block == nBlocks - 1)
+		// {
+		// 	pb.Update(dim,j);
+		// }
 	}
-
+	std::cout << "\tBlock " << block << " complete, waiting for join " << std::endl;
 }
 
 int main(int argc, char** argv)
 {
+	std::cout << "Integrator test initialised" << std::endl;
 	JSL::Argument<int> dimInput(1,"d",argc,argv);
 	// PreparePlotter
 	JSL::Argument<int> seed(time(NULL),"s",argc,argv);
@@ -317,7 +318,7 @@ int main(int argc, char** argv)
 	
 	std::vector<std::thread> threads(threadCount);
 
-	
+	std::cout << "Thread vector initialised to size " << threadCount << std::endl;
 	Test MCI("MCI",&test_MCI,false,JSL::Solid);
 	Test LMCI("LMCI",*test_LMCI,true,JSL::Dash);
 	Test RGI("RGI",test_RGI,false,JSL::Solid);
@@ -333,13 +334,14 @@ int main(int argc, char** argv)
 	VegasTest vdMCI("Log-Vegas-Half",&vegas_LMCI,mciD,mciR/fac,true,JSL::Dash);
 	VegasTest vdLMCI("Log-Vegas-Double",&vegas_LMCI,mciD*fac,mciR*fac,true,JSL::Dotted);
 	// VegasTest vvdLMCI("Log-Vegas-Massive",&vegas_LMCI,10,50,false,JSL::Dotted);
-	
+	std::cout << "Initialised testers" << threadCount << std::endl;
 	// std::vector<Test *> tests = {&RGI,&LRGI,&MCI,&LMCI,&vLMCI,&vdMCI,&vdLMCI,&vvdLMCI,&bGAI,&GAI,&eGAI};
 
 	std::vector<Test *> tests = {&LMCI,&vLMCI,&vdMCI,&vdLMCI,&eGAI};
 
 	for (int q = 0; q < dims.size(); ++q)
 	{
+		std::cout << "Begin test loop at dimension " << dims[q] << std::endl;
 		dim = dims[q];
 		means.resize(dim);
 		errors.resize(dim);
@@ -353,6 +355,7 @@ int main(int argc, char** argv)
 
 		for (int b = 0; b < threadCount; ++b)
 		{
+			std::cout << "\tLaunching thread " << b << std::endl;
 			threads[b] = std::thread(TestBlock,tests,resolutions,amounts,b,threadCount,std::ref(pb),q);
 		}
 
