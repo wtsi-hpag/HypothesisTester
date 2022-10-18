@@ -43,9 +43,15 @@ struct Test
 		PrevColour = prevCol;
 		Style = type;
 	}
-	void Prepare(std::vector<int> resolutions)
+	void Prepare(const std::vector<int> & resolutions, const std::vector<int> & amounts)
 	{
-		Results.resize(resolutions.size());
+		int n = resolutions.size();
+		Results.resize(n);
+		for (int i =0; i < n; ++i)
+		{
+			Results[i].resize(amounts[i]);
+		}
+
 	}
 	std::string Name;
 	std::vector<std::vector<result>> Results;
@@ -57,22 +63,20 @@ struct Test
 			return;
 		}
 		auto now = std::chrono::system_clock::now();
-		std::vector<result> resultList(loops);
 		double mVal = 0;
 		for (int i = 0; i < loops; ++i)
 		{
 			
 			double v = Function(res,lower,upper);
 			mVal += v;
-			resultList[i].result = v;
+			Results[resID][i].result = v;
 
 		}
 		std::chrono::duration<double,std::ratio<1,1000>> duration = std::chrono::system_clock::now() - now;
 		for (int i = 0; i < loops; ++i)
 		{
-			resultList[i].time = duration.count()/loops;
+			Results[resID][i].time = duration.count()/loops;
 		}
-		Results[resID] = resultList;
 		
 	}
 	typedef double (*functor)(int,double,double); 
@@ -95,21 +99,21 @@ struct VegasTest : Test
 	void PerformTest(int loops, int res,int resID,double lower, double upper)
 	{
 		auto now = std::chrono::system_clock::now();
-		std::vector<result> resultList(loops);
+		// std::vector<result> resultList(loops);
 		for (int i = 0; i < loops; ++i)
 		{
 			
 			double v = vFunction(res,vegasDepth,vegasResolution,lower,upper);
 			
-			resultList[i].result = v;
+			Results[resID][i].result = v;
 
 		}
 		std::chrono::duration<double,std::ratio<1,1000>> duration = std::chrono::system_clock::now() - now;
 		for (int i = 0; i < loops; ++i)
 		{
-			resultList[i].time = duration.count()/loops;
+			Results[resID][i].time = duration.count()/loops;
 		}
-		Results[resID] = resultList;
+		// Results[resID] = resultList;
 	}
 	double vegasDepth;
 	double vegasResolution;
@@ -260,7 +264,7 @@ const double lower = -100;
 const double upper = 100;
 const int minLoops = 5;
 const int maxLoops = 30;
-void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vector<int> amounts,int block, int nBlocks)
+void TestBlock(const std::vector<Test *> & tests, const std::vector<int> & resolutions,const std::vector<int> & amounts,int block, int nBlocks)
 {
 	auto now = std::chrono::system_clock::now();
 	int testCount = tests.size();
@@ -272,11 +276,6 @@ void TestBlock(std::vector<Test *> tests, std::vector<int> resolutions, std::vec
 		{
 			tests[i]->PerformTest(amounts[j],resolutions[j],j,lower,upper);
 		}
-
-		// if (block == nBlocks - 1)
-		// {
-		// 	pb.Update(dim,j);
-		// }
 	}
 	std::chrono::duration<double,std::ratio<1,1>> duration = std::chrono::system_clock::now() - now;
 	std::cout << "\tBlock " << block << " completed in " << JSL::FormatDuration(duration.count()) << std::endl;
@@ -353,7 +352,7 @@ int main(int argc, char** argv)
 		
 		for (auto t : tests)
 		{
-			t->Prepare(resolutions);
+			t->Prepare(resolutions,amounts);
 		}
 
 		
